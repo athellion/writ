@@ -1,0 +1,7 @@
+{
+  "tagline": "Documents with headings, written on a sheet of paper. Saved as Word files.",
+  "accent": "#7a2e38",
+  "accentDark": "#d8939c",
+  "data": ["%APPDATA%\\Writ"],
+  "keepNote": "Your documents are files you saved; they are never touched."
+}

@@ -1,0 +1,272 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/lora/500.css';
+@import '@fontsource/lora/600.css';
+@import '@fontsource/literata/400.css';
+@import '@fontsource/literata/400-italic.css';
+@import '@fontsource/literata/600.css';
+@import '@fontsource/literata/600-italic.css';
+
+:root {
+  /* Daylight: a white sheet on a warm grey desk, with Writ's oxblood for what's active */
+  --bg: #ece6e1; /* the desk the sheet lies on, and the bars around it */
+  --surface: #faf7f4; /* panels, menus, dialogs */
+  --surface-2: #e3dcd6; /* hover, segmented controls */
+  --paper: #fffdfa; /* the sheet */
+  --paper-ink: #2b2522; /* the writing on it */
+  --paper-muted: #6a5f5a;
+  --paper-line: #e2d9d2;
+  --ink: #2c2523; /* the app's own words */
+  --muted: #6d625d;
+  --faint: #9c908a;
+  --line: #d9cfc8;
+  --accent: #7a2e38;
+  --accent-ink: #ffffff;
+  --accent-soft: #efdfe0;
+  --select: rgba(122, 46, 56, 0.16);
+  --match: rgba(212, 160, 74, 0.35);
+  --match-current: rgba(212, 160, 74, 0.75);
+  --shadow: 0 1px 2px rgba(43, 37, 34, 0.06), 0 10px 28px -10px rgba(43, 37, 34, 0.28);
+  --sheet-shadow: 0 0 0 1px rgba(43, 37, 34, 0.05), 0 2px 4px rgba(43, 37, 34, 0.05), 0 24px 50px -22px rgba(43, 37, 34, 0.35);
+
+  --font-ui: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-title: 'Lora', Georgia, serif;
+  --font-text: 'Literata', Georgia, serif;
+  --topbar: 40px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  /* Night: warm dark paper (as in The Scriptorium's night page) on a darker desk */
+  --bg: #161213;
+  --surface: #211b1b;
+  --surface-2: #2c2424;
+  --paper: #241e1d;
+  --paper-ink: #e9dfd8;
+  --paper-muted: #a3958c;
+  --paper-line: #3a302d;
+  --ink: #e6dcd6;
+  --muted: #a8998f;
+  --faint: #75685f;
+  --line: #322a28;
+  --accent: #d8939c;
+  --accent-ink: #2a1215;
+  --accent-soft: #3a2226;
+  --select: rgba(216, 147, 156, 0.24);
+  --match: rgba(212, 160, 74, 0.28);
+  --match-current: rgba(212, 160, 74, 0.6);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+  --sheet-shadow: 0 0 0 1px #352b28, 0 1px 0 rgba(255, 235, 220, 0.03) inset, 0 28px 56px -22px rgba(0, 0, 0, 0.75);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 13px/1.45 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* quiet scrollbars everywhere */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--faint) 40%, transparent);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--faint) 70%, transparent);
+}
+
+/* ---------- the document on the sheet ---------- */
+.writ-doc {
+  outline: none;
+  color: var(--paper-ink);
+  font: 400 15px/1.62 var(--font-text);
+  font-variant-ligatures: common-ligatures;
+  caret-color: var(--accent);
+  min-height: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.writ-doc ::selection {
+  background: var(--select);
+}
+.writ-doc > * {
+  margin: 0 0 0.62em;
+}
+.writ-doc h1,
+.writ-doc h2,
+.writ-doc h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--paper-ink);
+  scroll-margin-top: 24px;
+}
+.writ-doc h1 {
+  font-size: 1.6em;
+  margin: 1.1em 0 0.4em;
+}
+.writ-doc h2 {
+  font-size: 1.3em;
+  margin: 1em 0 0.35em;
+}
+.writ-doc h3 {
+  font-size: 1.08em;
+  margin: 0.9em 0 0.3em;
+}
+.writ-doc > :first-child {
+  margin-top: 0;
+}
+.writ-doc p {
+  min-height: 1.62em;
+}
+.writ-doc strong {
+  font-weight: 600;
+}
+.writ-doc u {
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+.writ-doc s {
+  text-decoration-color: color-mix(in srgb, var(--paper-ink) 55%, transparent);
+}
+.writ-doc a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 0.18em;
+  cursor: text;
+}
+.writ-doc ul,
+.writ-doc ol {
+  padding-left: 1.6em;
+}
+.writ-doc li {
+  margin: 0.15em 0;
+}
+.writ-doc li p {
+  margin: 0;
+}
+.writ-doc li::marker {
+  color: var(--accent);
+}
+.writ-doc ul ul,
+.writ-doc ol ol,
+.writ-doc ul ol,
+.writ-doc ol ul {
+  margin: 0.15em 0;
+}
+.writ-doc blockquote {
+  border-left: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  padding-left: 1em;
+  margin-left: 0.2em;
+  color: var(--paper-muted);
+  font-style: italic;
+}
+.writ-doc blockquote > p {
+  margin: 0 0 0.4em;
+}
+/* checklists: boxes you can click */
+.writ-doc ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+.writ-doc ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+}
+.writ-doc ul[data-type='taskList'] li > label {
+  flex: none;
+  user-select: none;
+  margin-top: 0.32em;
+}
+.writ-doc ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+.writ-doc ul[data-type='taskList'] input[type='checkbox'] {
+  appearance: none;
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 65%, var(--paper-muted));
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.writ-doc ul[data-type='taskList'] input[type='checkbox']:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.writ-doc ul[data-type='taskList'] input[type='checkbox']:checked::after {
+  content: '';
+  width: 0.24em;
+  height: 0.48em;
+  margin-top: -0.1em;
+  border: solid var(--accent-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(42deg);
+}
+.writ-doc li[data-checked='true'] > div {
+  color: var(--paper-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--paper-ink) 40%, transparent);
+}
+/* the placeholder in an empty document */
+.writ-doc p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--paper-muted);
+  opacity: 0.6;
+  font-style: italic;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+/* folded sections: hidden on the page, a quiet mark after the heading */
+.writ-doc .writ-hidden {
+  display: none;
+}
+.writ-doc .writ-folded-head::after {
+  content: ' …';
+  color: var(--accent);
+  font-weight: 400;
+}
+/* find */
+.writ-doc .writ-match {
+  background: var(--match);
+  border-radius: 2px;
+}
+.writ-doc .writ-match.current {
+  background: var(--match-current);
+}

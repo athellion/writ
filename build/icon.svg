@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a2430"/>
+      <stop offset="0.5" stop-color="#4a1d24"/>
+      <stop offset="1" stop-color="#2e1116"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.54" r="0.5">
+      <stop offset="0" stop-color="#ffd9a0" stop-opacity="0.42"/>
+      <stop offset="0.5" stop-color="#e8a868" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#e8a868" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="seal" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#f3bd63"/>
+      <stop offset="1" stop-color="#d58c34"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6efe0"/>
+      <stop offset="1" stop-color="#e7dcc6"/>
+    </linearGradient>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#tile)"/>
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#glow)"/>
+  <rect x="8.75" y="8.75" width="238.5" height="238.5" rx="53.25" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+  <rect x="56" y="76" width="144" height="102" rx="8" fill="url(#paper)"/>
+  <path d="M60 81 L128 133 L196 81" fill="none" stroke="#c2b190" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="128" cy="137" r="34" fill="#ffd28a" opacity="0.55" filter="url(#soft)"/>
+  <circle cx="128" cy="137" r="23" fill="url(#seal)"/>
+  <circle cx="128" cy="137" r="14.5" fill="none" stroke="#fbe0a4" stroke-width="3.5"/>
+  <circle cx="128" cy="137" r="23" fill="none" stroke="#a86424" stroke-opacity="0.35" stroke-width="1.5"/>
+</svg>

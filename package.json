@@ -1,0 +1,82 @@
+{
+  "name": "writ",
+  "version": "0.1.0",
+  "description": "Bjørnar's own writing app: documents with headings and basic formatting, saved as Word files.",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64 && node ../vestibulum/tools/pack.cjs"
+  },
+  "author": "Bjørnar Eriksen",
+  "productName": "Writ",
+  "type": "module",
+  "license": "UNLICENSED",
+  "build": {
+    "appId": "no.bjornar.writ",
+    "productName": "Writ",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "afterPack": "build/after-pack.cjs",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "include": "build/installer.nsh",
+      "createDesktopShortcut": false,
+      "shortcutName": "Writ",
+      "artifactName": "Writ-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "playwright-core": "^1.65.0",
+    "resedit": "^3.1.0",
+    "svelte": "^5.57.3",
+    "vite": "^6.4.5"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/literata": "^5.3.0",
+    "@fontsource/lora": "^5.3.0",
+    "@tiptap/core": "^3.33.0",
+    "@tiptap/extension-link": "^3.33.0",
+    "@tiptap/extension-placeholder": "^3.33.0",
+    "@tiptap/extension-strike": "^3.33.0",
+    "@tiptap/extension-task-item": "^3.33.0",
+    "@tiptap/extension-task-list": "^3.33.0",
+    "@tiptap/extension-underline": "^3.33.0",
+    "@tiptap/extensions": "^3.33.0",
+    "@tiptap/pm": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
+    "docx": "^9.15.3",
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0"
+  }
+}

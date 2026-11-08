@@ -212,9 +212,9 @@ const sha = (f) => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('
   const wh = await ww.evaluate(() => window.__writ.html());
   check('a Word document opens with its headings, lists, bold and italic', /<h1>Årsmøte 2026<\/h1>/.test(wh) && /<h2>Økonomi<\/h2>/.test(wh) && /<strong>Skårerløkka<\/strong>/.test(wh) && /<em>årsmøte<\/em>/.test(wh) && /<ol><li><p>Ett/.test(wh), wh);
   check('…a Word heading 4 comes in as a heading 3', /<h3>Detaljer<\/h3>/.test(wh));
-  check('…a table\'s text is kept', /Strøm/.test(wh) && /1200/.test(wh));
+  check('…a table comes in as a table', /<table/.test(wh) && /<p>Strøm<\/p><\/td>/.test(wh) && /1200/.test(wh), wh);
   const notice = await ww.locator('.notice').innerText();
-  check('…and Writ says plainly what it couldn\'t bring in', /tables/.test(notice) && /pictures/.test(notice) && /comments/.test(notice) && /tracked changes/.test(notice) && /headers and footers/.test(notice), notice);
+  check('…and Writ says plainly what it couldn\'t bring in (tables aren\'t on the list any more)', !/tables/.test(notice) && /pictures/.test(notice) && /comments/.test(notice) && /tracked changes/.test(notice) && /headers and footers/.test(notice), notice);
   await ww.screenshot({ path: `${shots}/06-word-document.png` });
   await ww.locator('.writ-doc h2').first().click();
   await ww.keyboard.press('End');

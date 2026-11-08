@@ -40,7 +40,8 @@ async function lookInside(buffer) {
     const read = async (name) => (zip.file(name) ? zip.file(name).async('string') : '');
     const body = await read('word/document.xml');
     const has = (re) => re.test(body);
-    if (has(/<w:tbl[\s>]/)) left.push('tables (their text is kept, as ordinary paragraphs)');
+    // (tables come in as tables since 0.2.0; a table inside a table is flattened into its cell)
+    if (/<w:tbl[\s>][\s\S]*?<w:tc[\s>][\s\S]*?<w:tbl[\s>]/.test(body.replace(/<\/w:tbl>[\s\S]*?(?=<w:tbl[\s>])/g, ''))) left.push('tables inside tables');
     if (has(/<w:drawing[\s>]|<w:pict[\s>]|<v:imagedata/)) left.push('pictures');
     if (has(/<w:ins[\s>]|<w:del[\s>]|<w:moveFrom[\s>]|<w:moveTo[\s>]/)) left.push('tracked changes (shown as if accepted)');
     if (/<w:comment[\s>]/.test(await read('word/comments.xml'))) left.push('comments');

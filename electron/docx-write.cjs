@@ -100,7 +100,7 @@ function runs(nodes = []) {
 // Walks the document and gives Word's paragraphs, in order. `ctx` carries where we are: inside a quote,
 // how deep in a list.
 function blocks(nodes = [], ctx = {}, out = [], state = { lists: 0 }) {
-  for (const n of nodes) {
+  for (const [i, n] of nodes.entries()) {
     switch (n.type) {
       case 'paragraph':
         out.push(
@@ -151,12 +151,47 @@ function blocks(nodes = [], ctx = {}, out = [], state = { lists: 0 }) {
         }
         break;
       }
+      case 'table':
+        out.push(table(n));
+        // (Word needs a paragraph between two tables, or they become one)
+        if (nodes[i + 1]?.type === 'table') out.push(new D.Paragraph({}));
+        break;
       default:
         // (anything else carries on with whatever it contains, so no words are ever dropped)
         if (n.content) blocks(n.content, ctx, out, state);
     }
   }
   return out;
+}
+
+// A table: Word's own, the full width of the page, thin lines in the paper's colour. Header cells (the
+// editor's) are on a light shade, and their row repeats at the top of each printed page.
+const LINE = { style: D.BorderStyle.SINGLE, size: 4, color: 'C9BDB5' };
+function table(n) {
+  const rows = (n.content || []).map((r) => {
+    const cells = r.content || [];
+    const header = cells.length > 0 && cells.every((c) => c.type === 'tableHeader');
+    return new D.TableRow({
+      tableHeader: header || undefined, // (written as "off" otherwise, which some readers take for a header)
+      children: cells.map((c) => {
+        const paras = (c.content || []).map((p) =>
+          new D.Paragraph({ children: runs(p.content), spacing: { after: 0 } }),
+        );
+        return new D.TableCell({
+          children: paras.length ? paras : [new D.Paragraph({})],
+          columnSpan: c.attrs?.colspan > 1 ? c.attrs.colspan : undefined,
+          rowSpan: c.attrs?.rowspan > 1 ? c.attrs.rowspan : undefined,
+          shading: c.type === 'tableHeader' ? { type: D.ShadingType.CLEAR, fill: 'EFE9E4', color: 'auto' } : undefined,
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        });
+      }),
+    });
+  });
+  return new D.Table({
+    rows,
+    width: { size: 100, type: D.WidthType.PERCENTAGE },
+    borders: { top: LINE, bottom: LINE, left: LINE, right: LINE, insideHorizontal: LINE, insideVertical: LINE },
+  });
 }
 
 // Turns the page's document into the bytes of a .docx file.

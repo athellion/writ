@@ -8,7 +8,7 @@
   const groups = [
     ['Documents', [
       ['Ctrl+N', 'New document'],
-      ['Ctrl+O', 'Open a Word document'],
+      ['Ctrl+O', 'Open a document (.docx or .md)'],
       ['Ctrl+S', 'Save'],
       ['Ctrl+Shift+S', 'Save as'],
       ['Ctrl+W', 'Close the document'],
@@ -19,6 +19,8 @@
       ['Enter / Shift+Enter', 'Next / previous match'],
     ]],
     ['Showing', [
+      ['Ctrl+M', 'Markdown mode on or off'],
+      ['Ctrl+Shift+M', 'Markdown mode: the plain text'],
       ['Ctrl+\\', 'Show or hide the outline'],
       ['Ctrl++ / Ctrl+−', 'Zoom in / out'],
       ['Ctrl+0', 'Back to 100 %'],

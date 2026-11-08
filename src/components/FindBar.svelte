@@ -2,8 +2,8 @@
   // Find (Ctrl+F) and replace (Ctrl+H): a small card at the top of the page. Matches are marked on the
   // sheet; Enter goes to the next one, Shift+Enter to the one before.
   import { onMount, onDestroy } from 'svelte';
-  import { setFind, clearFind, findStep, findState, replaceCurrent, replaceAll } from '../lib/editor.js';
-  let { editor, replace = false, seed = '', onclose } = $props();
+  // (it works through the document's handles, so it's the same in both kinds of document)
+  let { doc, replace = false, seed = '', onclose } = $props();
 
   let query = $state(seed);
   let replacement = $state('');
@@ -15,21 +15,21 @@
   let note = $state('');
 
   function run() {
-    setFind(editor, query, { caseSensitive, wholeWords });
-    found = findState(editor);
+    doc.setFind(query, { caseSensitive, wholeWords });
+    found = doc.findState();
     note = '';
   }
   function step(dir) {
-    findStep(editor, dir);
-    found = findState(editor);
+    doc.findStep(dir);
+    found = doc.findState();
   }
   function one() {
-    replaceCurrent(editor, replacement);
-    found = findState(editor);
+    doc.replaceCurrent(replacement);
+    found = doc.findState();
   }
   function all() {
-    const n = replaceAll(editor, replacement);
-    found = findState(editor);
+    const n = doc.replaceAll(replacement);
+    found = doc.findState();
     note = n ? `Replaced ${n}` : '';
   }
   function keys(e) {
@@ -50,7 +50,7 @@
     input?.select();
     if (query) run();
   });
-  onDestroy(() => clearFind(editor));
+  onDestroy(() => doc.clearFind());
 </script>
 
 <div class="find" role="search">

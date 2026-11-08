@@ -34,7 +34,7 @@
 
     <div class="field wide">
       <span class="label">Documents</span>
-      <p>Writ saves Word documents (.docx), on A4 paper in Georgia, so anyone can open them as they were written.</p>
+      <p>Writ saves Word documents (.docx), on A4 paper in Georgia, so anyone can open them as they were written. Markdown documents (.md) open in Markdown mode, and are saved exactly as they were, apart from what you changed.</p>
     </div>
 
     <footer><Mark size={15} /> Writ {version}</footer>

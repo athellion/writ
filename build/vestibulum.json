@@ -1,5 +1,5 @@
 {
-  "tagline": "Documents with headings, written on a sheet of paper. Saved as Word files.",
+  "tagline": "Documents with headings, written on a sheet of paper. Word files, or Markdown.",
   "accent": "#7a2e38",
   "accentDark": "#d8939c",
   "data": ["%APPDATA%\\Writ"],

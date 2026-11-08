@@ -13,6 +13,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Strike from '@tiptap/extension-strike';
 import { TaskList, TaskItem } from '@tiptap/extension-list';
 import { Placeholder } from '@tiptap/extensions';
+import { TableKit } from '@tiptap/extension-table';
+import { countWords } from './words.js';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
@@ -188,6 +190,7 @@ export function createEditor(element, { html = '', onChange, onSelection, onTran
       WritStrike,
       TaskList,
       TaskItem.configure({ nested: true }),
+      TableKit.configure({ table: { resizable: false, HTMLAttributes: { class: 'writ-table' } } }),
       Placeholder.configure({ placeholder, showOnlyWhenEditable: true, showOnlyCurrent: true }),
       Folding,
       Find,
@@ -240,7 +243,6 @@ export function currentHeading(editor) {
   return at;
 }
 
-const countWords = (text) => (text.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-.,:]*/gu) || []).length;
 
 export function counts(editor) {
   const { doc, selection } = editor.state;
@@ -332,4 +334,97 @@ export function replaceAll(editor, text) {
   for (const m of [...s.matches].reverse()) tr = tr.insertText(text, m.from, m.to);
   editor.view.dispatch(tr);
   return s.matches.length;
+}
+
+// ---------- the same handles the page uses for Markdown mode (mdeditor.js) ----------
+export function createDocEditor(element, hooks) {
+  const editor = createEditor(element, hooks);
+  const chain = () => editor.chain().focus();
+  return {
+    kind: 'docx',
+    editor,
+    json: () => editor.getJSON(),
+    html: () => editor.getHTML(),
+    snapshot: () => JSON.stringify(editor.getJSON()),
+    focus: (where) => editor.commands.focus(where || undefined),
+    destroy: () => editor.destroy(),
+    replace: (html) => editor.commands.setContent(html, { emitUpdate: false }),
+    selectedText: () => {
+      const { from, to, empty } = editor.state.selection;
+      return empty ? '' : editor.state.doc.textBetween(from, to, ' ');
+    },
+    title: () => {
+      let t = '';
+      editor.state.doc.forEach((n) => {
+        if (!t && n.textContent.trim()) t = n.textContent.trim();
+      });
+      return t;
+    },
+    active() {
+      const e = editor;
+      return {
+        style: e.isActive('heading', { level: 1 }) ? 'h1' : e.isActive('heading', { level: 2 }) ? 'h2' : e.isActive('heading', { level: 3 }) ? 'h3' : 'p',
+        bold: e.isActive('bold'),
+        italic: e.isActive('italic'),
+        underline: e.isActive('underline'),
+        strike: e.isActive('strike'),
+        bullet: e.isActive('bulletList'),
+        ordered: e.isActive('orderedList'),
+        task: e.isActive('taskList'),
+        quote: e.isActive('blockquote'),
+        link: e.isActive('link'),
+        table: e.isActive('table'),
+        undo: e.can().undo(),
+        redo: e.can().redo(),
+      };
+    },
+    run(cmd) {
+      const map = {
+        bold: () => chain().toggleBold().run(),
+        italic: () => chain().toggleItalic().run(),
+        underline: () => chain().toggleUnderline().run(),
+        strike: () => chain().toggleStrike().run(),
+        bullet: () => chain().toggleBulletList().run(),
+        ordered: () => chain().toggleOrderedList().run(),
+        task: () => chain().toggleTaskList().run(),
+        quote: () => chain().toggleBlockquote().run(),
+        undo: () => chain().undo().run(),
+        redo: () => chain().redo().run(),
+        // tables
+        rowAbove: () => chain().addRowBefore().run(),
+        rowBelow: () => chain().addRowAfter().run(),
+        colLeft: () => chain().addColumnBefore().run(),
+        colRight: () => chain().addColumnAfter().run(),
+        delRow: () => chain().deleteRow().run(),
+        delCol: () => chain().deleteColumn().run(),
+        delTable: () => chain().deleteTable().run(),
+        headerRow: () => chain().toggleHeaderRow().run(),
+      };
+      map[cmd]?.();
+    },
+    setStyle(v) {
+      if (v === 'p') chain().setParagraph().run();
+      else chain().setHeading({ level: Number(v[1]) }).run();
+    },
+    linkHref: () => editor.getAttributes('link').href || '',
+    setLink(href) {
+      if (editor.state.selection.empty && !editor.isActive('link')) {
+        chain().insertContent({ type: 'text', text: href.replace(/^mailto:/, ''), marks: [{ type: 'link', attrs: { href } }] }).run();
+      } else chain().extendMarkRange('link').setLink({ href }).run();
+    },
+    removeLink: () => chain().extendMarkRange('link').unsetLink().run(),
+    insertTable: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    outline: () => outline(editor),
+    currentHeading: () => currentHeading(editor),
+    counts: () => counts(editor),
+    toggleFold: (pos) => toggleFold(editor, pos, true),
+    moveSection: (from, to) => moveSection(editor, from, to),
+    goTo: (pos) => goTo(editor, pos),
+    setFind: (q, o) => setFind(editor, q, o),
+    clearFind: () => clearFind(editor),
+    findState: () => findState(editor),
+    findStep: (d) => findStep(editor, d),
+    replaceCurrent: (t) => replaceCurrent(editor, t),
+    replaceAll: (t) => replaceAll(editor, t),
+  };
 }

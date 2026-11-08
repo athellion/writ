@@ -1,6 +1,8 @@
 // Writ: Bjørnar's own writing app. The main process: one window per document, reading and writing
-// Word files (electron/docx-read.cjs, electron/docx-write.cjs), and asking before a document with
-// unsaved changes is closed.
+// Word files (electron/docx-read.cjs, electron/docx-write.cjs) and Markdown files (exactly as they
+// were: electron/textfile.cjs, as in Jot), and asking before a document with unsaved changes is closed.
+// Each window is one of two kinds: a Word document ("docx", the document editor) or a Markdown
+// document ("md", Markdown mode).
 //
 // Writ runs as one program however many documents are open: double-clicking another .docx (with
 // "Open with → Writ") while Writ is running opens it in a new window of the same Writ. When the last
@@ -11,6 +13,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { readDocx } = require('./docx-read.cjs');
 const { writeDocx } = require('./docx-write.cjs');
+const T = require('./textfile.cjs');
 
 const E2E = !!process.env.WRIT_E2E;
 process.on('uncaughtException', (e) => log('error:', e.stack || e.message));
@@ -67,6 +70,8 @@ const newId = () => crypto.randomBytes(6).toString('hex');
 const nameOf = (d) => (d.path ? path.basename(d.path) : 'Untitled');
 const hash = (buf) => crypto.createHash('sha1').update(buf).digest('hex');
 const isDocx = (f) => /\.docx$/i.test(f || '');
+const isMd = (f) => /\.(md|markdown|mdown|mkd)$/i.test(f || '');
+const describeForm = (form) => ({ ...form, encodingLabel: T.encodingLabel(form), eolLabel: T.EOL_NAMES[form.eol] });
 
 // the window's own colour before the page draws, and the colour of Windows' buttons in the title bar
 function colours() {
@@ -97,8 +102,12 @@ function nextBounds() {
 
 async function readFile(file) {
   const buf = fs.readFileSync(file);
+  if (isMd(file)) {
+    const got = T.decode(buf);
+    return { kind: 'md', text: got.text, form: { encoding: got.encoding, bom: got.bom, eol: got.eol }, left: [], hash: hash(buf) };
+  }
   const got = await readDocx(buf);
-  return { ...got, hash: hash(buf) };
+  return { kind: 'docx', ...got, hash: hash(buf) };
 }
 
 // Opens a window for a document: { file } to open a .docx, or nothing for a new, empty one.
@@ -112,15 +121,17 @@ async function openDoc({ file = null } = {}) {
       return open;
     }
   }
-  const d = { id: newId(), path: file || null, dirty: false, initial: { html: '' }, left: [] };
+  const d = { id: newId(), path: file || null, dirty: false, kind: 'docx', initial: { html: '' }, form: { ...T.NEW_FORM }, left: [] };
   if (file) {
-    if (!isDocx(file)) {
-      dialog.showMessageBox({ type: 'info', message: `Writ opens Word documents (.docx).`, detail: `${path.basename(file)} isn't one.`, buttons: ['OK'] });
+    if (!isDocx(file) && !isMd(file)) {
+      dialog.showMessageBox({ type: 'info', message: `Writ opens Word documents (.docx) and Markdown documents (.md).`, detail: `${path.basename(file)} isn't one.`, buttons: ['OK'] });
       return null;
     }
     try {
       const got = await readFile(file);
-      d.initial = { html: got.html };
+      d.kind = got.kind;
+      d.initial = got.kind === 'md' ? { text: got.text } : { html: got.html };
+      if (got.form) d.form = got.form;
       d.left = got.left;
       d.savedHash = got.hash;
     } catch (e) {
@@ -220,21 +231,22 @@ async function changedOnDisk(d) {
   try {
     const buf = fs.readFileSync(d.path);
     if (hash(buf) === d.savedHash) return; // our own save
-    got = await readDocx(buf);
-    got.hash = hash(buf);
+    got = await readFile(d.path);
+    if (got.kind !== d.kind) return;
   } catch {
     return; // (gone, or being written; a later change will tell)
   }
   d.savedHash = got.hash;
   d.left = got.left;
-  d.win.webContents.send('doc:disk', { html: got.html, left: got.left, replace: !d.dirty });
+  if (got.form && !d.dirty) d.form = got.form;
+  d.win.webContents.send('doc:disk', { html: got.html, text: got.text, left: got.left, replace: !d.dirty });
 }
 
 // ---------- talking to the page ----------
 ipcMain.handle('doc:init', (e) => {
   const d = docOf(e);
   if (!d) return null;
-  return { id: d.id, path: d.path, name: nameOf(d), html: d.initial.html, left: d.left, settings: publicSettings(), version: app.getVersion() };
+  return { id: d.id, path: d.path, name: nameOf(d), kind: d.kind, html: d.initial.html, text: d.initial.text, form: describeForm(d.form), left: d.left, settings: publicSettings(), version: app.getVersion() };
 });
 
 ipcMain.on('doc:changed', (e, dirty) => {
@@ -248,26 +260,45 @@ function suggestName(title) {
   return String(title || '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/[. ]+$/, '').slice(0, 60).trim() || 'Untitled';
 }
 
-// Saves the document as a .docx. "as" (Save as…, or a document without a file yet) asks where.
-// `title`: the document's first heading or line, for the suggested file name.
-ipcMain.handle('doc:save', async (e, { json, as, title }) => {
+// Saves the document. `kind` is what it's saved as: "docx" (from the editor's JSON) or "md" (the
+// Markdown text, in the file's own encoding and line endings). "as" (Save as…, a document without a
+// file yet, or a document changing kind) asks where. `title`: its first heading or line, for the
+// suggested file name.
+const KINDS = {
+  docx: { ext: 'docx', filter: { name: 'Word document', extensions: ['docx'] } },
+  md: { ext: 'md', filter: { name: 'Markdown document', extensions: ['md'] } },
+};
+async function askWhere(d, kind, title, copy) {
+  const k = KINDS[kind];
+  const base = d.path ? path.basename(d.path, path.extname(d.path)) + (copy ? ' (copy)' : '') : suggestName(title);
+  const dir = d.path ? path.dirname(d.path) : settings.lastFolder || app.getPath('documents');
+  const r = E2E && process.env.WRIT_SAVE_AS
+    ? { canceled: false, filePath: path.join(process.env.WRIT_SAVE_AS, `${base}.${k.ext}`) }
+    : await dialog.showSaveDialog(d.win, { title: copy ? 'Save as' : 'Save', defaultPath: path.join(dir, `${base}.${k.ext}`), filters: [k.filter] });
+  if (r.canceled || !r.filePath) return null;
+  const ok = kind === 'md' ? isMd(r.filePath) : isDocx(r.filePath);
+  return ok ? r.filePath : `${r.filePath}.${k.ext}`;
+}
+ipcMain.handle('doc:save', async (e, { kind = 'docx', json, text, as, title }) => {
   const d = docOf(e);
   if (!d) return { ok: false };
+  const switching = kind !== d.kind;
   let file = d.path;
-  if (!file || as) {
-    const base = d.path ? path.basename(d.path, path.extname(d.path)) + (as ? ' (copy)' : '') : suggestName(title);
-    const dir = d.path ? path.dirname(d.path) : settings.lastFolder || app.getPath('documents');
-    const r = E2E && process.env.WRIT_SAVE_AS
-      ? { canceled: false, filePath: path.join(process.env.WRIT_SAVE_AS, `${base}.docx`) }
-      : await dialog.showSaveDialog(d.win, { title: as ? 'Save as' : 'Save', defaultPath: path.join(dir, `${base}.docx`), filters: [{ name: 'Word document', extensions: ['docx'] }] });
-    if (r.canceled || !r.filePath) return { ok: false, canceled: true };
-    file = isDocx(r.filePath) ? r.filePath : `${r.filePath}.docx`;
+  if (!file || as || switching) {
+    file = await askWhere(d, kind, title, as && !switching && !!d.path);
+    if (!file) return { ok: false, canceled: true };
   }
   try {
-    const bytes = await writeDocx(json, { title });
+    let bytes, changed = null;
+    if (kind === 'md') {
+      const out = T.encode(text, switching ? T.NEW_FORM : d.form);
+      bytes = out.bytes;
+      d.form = out.form;
+      changed = out.changed;
+    } else bytes = await writeDocx(json, { title });
     writeSafely(file, bytes);
-    const elsewhere = !d.path || path.resolve(d.path) !== path.resolve(file);
     d.path = file;
+    d.kind = kind;
     d.savedHash = hash(bytes);
     d.dirty = false;
     // what couldn't be brought in belongs to the original file; a file written by Writ has everything
@@ -276,12 +307,29 @@ ipcMain.handle('doc:save', async (e, { json, as, title }) => {
     saveSettings();
     refreshTitle(d);
     watch(d);
-    log('saved', file, elsewhere ? '(new place)' : '');
-    return { ok: true, path: file, name: nameOf(d) };
+    log('saved', file, kind, switching ? '(changed kind)' : '');
+    return { ok: true, path: file, name: nameOf(d), kind, form: describeForm(d.form), changed };
   } catch (err) {
     log('save failed', file, err.message);
     const busy = err.code === 'EBUSY' || err.code === 'EPERM' || err.code === 'EACCES';
     return { ok: false, error: busy ? 'the file is open in another program (Word?), or Writ isn’t allowed to write there.' : err.message };
+  }
+});
+
+// Export as a Word document (from Markdown mode): a .docx copy is written; the document itself, and the
+// window, stay as they were.
+ipcMain.handle('doc:export', async (e, { json, title }) => {
+  const d = docOf(e);
+  if (!d) return { ok: false };
+  const file = await askWhere({ ...d, path: d.path }, 'docx', title, false);
+  if (!file) return { ok: false, canceled: true };
+  try {
+    writeSafely(file, await writeDocx(json, { title }));
+    log('exported', file);
+    return { ok: true, path: file, name: path.basename(file) };
+  } catch (err) {
+    log('export failed', file, err.message);
+    return { ok: false, error: err.message };
   }
 });
 
@@ -322,7 +370,11 @@ ipcMain.handle('doc:open', async (e) => {
         title: 'Open',
         defaultPath: d?.path ? path.dirname(d.path) : settings.lastFolder || app.getPath('documents'),
         properties: ['openFile', 'multiSelections'],
-        filters: [{ name: 'Word documents', extensions: ['docx'] }],
+        filters: [
+          { name: 'Documents', extensions: ['docx', 'md', 'markdown'] },
+          { name: 'Word documents', extensions: ['docx'] },
+          { name: 'Markdown documents', extensions: ['md', 'markdown'] },
+        ],
       });
   if (r.canceled) return false;
   await openFiles(r.filePaths, d);
@@ -347,6 +399,11 @@ async function openFiles(files, here) {
     } else await openDoc({ file: f });
   }
 }
+// an untitled document switched between the two kinds (nothing is written until it's saved)
+ipcMain.on('doc:kind', (e, kind) => {
+  const d = docOf(e);
+  if (d && !d.path && KINDS[kind]) d.kind = kind;
+});
 // the page says when an untitled document has been typed in (so dropping a file opens a new window)
 ipcMain.on('doc:touched', (e) => {
   const d = docOf(e);
@@ -440,7 +497,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!docs.size) await openDoc();
     if (E2E) {
       globalThis.writ = {
-        docs: () => [...docs.values()].map((d) => ({ id: d.id, path: d.path, dirty: d.dirty, title: d.win?.getTitle(), left: d.left })),
+        docs: () => [...docs.values()].map((d) => ({ id: d.id, path: d.path, kind: d.kind, dirty: d.dirty, title: d.win?.getTitle(), left: d.left, form: d.form })),
         open: async (f) => (await openDoc({ file: f }))?.id,
         newDoc: async () => (await openDoc()).id,
         win: (id) => docs.get(id)?.win,
